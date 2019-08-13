@@ -296,15 +296,15 @@ var hrange = require('../h-range.js');
 
     $.CatchPy.prototype.getAnnotationTargetItems = function(webAnn) {
         try {
-            // console.log("reached getAnnotationTargetItems", webAnn);
+            console.log("reached getAnnotationTargetItems", webAnn);
             if (webAnn['target']['items'][0]['type'] == "Annotation") {
                 // console.log([{'parent':webAnn['target']['items'][0]['source']}]);
                 return [{'parent':webAnn['target']['items'][0]['source']}]
             }
-            // console.log("nope, something went wrong");
+            //console.log("nope, something went wrong");
             return webAnn['target']['items'][0]['selector']['items'];
         } catch(e) {
-            // console.log(e);
+            console.log(e);
             return [];
         }
     };
@@ -319,6 +319,7 @@ var hrange = require('../h-range.js');
             jQuery.each(this.getAnnotationTargetItems(webAnn), function(_, targetItem) {
                 if (!('parent' in targetItem)) {
                     if (targetItem['type'] === "RangeSelector") {
+                        console.log("Reached RangeSelector", targetItem);
                         xpathRanges.push({
                             start: targetItem['startSelector'] ? targetItem['startSelector'].value : targetItem['oa:start'].value,
                             startOffset: targetItem['refinedBy'][0].start,

@@ -28332,7 +28332,8 @@ function normalizeRange(serializedRange, root, ignoreSelector) {
     var normalizedRange = document.createRange();
     normalizedRange.setStart(startResult.node, startResult.offset);
     normalizedRange.setEnd(endResult.node, endResult.offset); //console.log('HERE', _start, _startOffset, _end, _endOffset, startResult, endResult, getExactText(normalizedRange), serializedRange.text.exact);
-    //console.log("Xpath Test: ", compareExactText(getExactText(normalizedRange), serializedRange.text.exact) ? "YES THEY MATCH" : "NO THEY DO NOT MATCH")
+
+    console.log("Xpath Test: ", compareExactText(getExactText(normalizedRange), serializedRange.text.exact) ? "YES THEY MATCH" : "NO THEY DO NOT MATCH");
   } //console.log(_start, _startOffset, startResult, endResult);
   //console.log(getPrefixAndSuffix(normalizedRange, root, ignoreSelector))
   // Way #2: if that doesn't match what we have stored as the quote, try global positioning from root
@@ -28346,7 +28347,8 @@ function normalizeRange(serializedRange, root, ignoreSelector) {
 
     normalizedRange = document.createRange();
     normalizedRange.setStart(startResult.node, startResult.offset);
-    normalizedRange.setEnd(endResult.node, endResult.offset); //console.log("Global offset Test: ", getExactText(normalizedRange) === serializedRange.text.exact ? "YES THEY MATCH" : "NO THEY DO NOT MATCH")
+    normalizedRange.setEnd(endResult.node, endResult.offset);
+    console.log("Global offset Test: ", getExactText(normalizedRange) === serializedRange.text.exact ? "YES THEY MATCH" : "NO THEY DO NOT MATCH");
   } // Way #3: looks for an exact match of prefix, suffix, and exact
   // This is for the usecase where someone has added text/html before this
 
@@ -28364,7 +28366,7 @@ function normalizeRange(serializedRange, root, ignoreSelector) {
       var toCheck = getPrefixAndSuffix(normalizedRange, root, ignoreSelector);
 
       if (serializedRange.text.prefix === toCheck.prefix && serializedRange.text.suffix === toCheck.suffix) {
-        //console.log("Exact Wording Test: ", getExactText(normalizedRange) === serializedRange.text.exact ? "YES THEY MATCH" : "NO THEY DO NOT MATCH")
+        console.log("Exact Wording Test: ", getExactText(normalizedRange) === serializedRange.text.exact ? "YES THEY MATCH" : "NO THEY DO NOT MATCH");
         break;
       }
     }
@@ -45237,18 +45239,19 @@ var hrange = __webpack_require__(3);
 
   $.CatchPy.prototype.getAnnotationTargetItems = function (webAnn) {
     try {
-      // console.log("reached getAnnotationTargetItems", webAnn);
+      console.log("reached getAnnotationTargetItems", webAnn);
+
       if (webAnn['target']['items'][0]['type'] == "Annotation") {
         // console.log([{'parent':webAnn['target']['items'][0]['source']}]);
         return [{
           'parent': webAnn['target']['items'][0]['source']
         }];
-      } // console.log("nope, something went wrong");
+      } //console.log("nope, something went wrong");
 
 
       return webAnn['target']['items'][0]['selector']['items'];
     } catch (e) {
-      // console.log(e);
+      console.log(e);
       return [];
     }
   };
@@ -45264,6 +45267,7 @@ var hrange = __webpack_require__(3);
       jQuery.each(this.getAnnotationTargetItems(webAnn), function (_, targetItem) {
         if (!('parent' in targetItem)) {
           if (targetItem['type'] === "RangeSelector") {
+            console.log("Reached RangeSelector", targetItem);
             xpathRanges.push({
               start: targetItem['startSelector'] ? targetItem['startSelector'].value : targetItem['oa:start'].value,
               startOffset: targetItem['refinedBy'][0].start,
