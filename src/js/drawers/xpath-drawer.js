@@ -197,6 +197,7 @@ var hrange = require('../h-range.js');
     $.XPathDrawer.prototype.getSpecificAnnotationData = function(annotation_id) {
         var self = this;
         var currentAnnotations = self.getAnnotationsData();
+        console.log(currentAnnotations);
         var foundAnnotation = currentAnnotations.find(function(ann) {
             if (ann.id === annotation_id) {
                 return ann;
