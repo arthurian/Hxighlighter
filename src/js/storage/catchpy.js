@@ -179,7 +179,7 @@ var hrange = require('../h-range.js');
                 'purpose': 'tagging'
             };
             tags.push(t_el);
-        })
+        });
 
        
         var targetList = [];

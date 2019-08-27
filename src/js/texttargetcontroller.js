@@ -20,6 +20,7 @@ require('./plugins/hx-sidebar-tag-tokens.js');
 require('./plugins/hx-adminbutton.js');
 require('./plugins/hx-permissions.js');
 require('./plugins/hx-alert.js');
+require('./plugins/hx-websockets.js');
 
 (function($) {
 
@@ -359,6 +360,7 @@ require('./plugins/hx-alert.js');
      */
     $.TextTarget.prototype.TargetAnnotationDraw = function(annotation) {
         var self = this;
+        console.log('me', annotation);
         jQuery.each(self.drawers, function(_, drawer) {
             drawer.draw(annotation);
         });

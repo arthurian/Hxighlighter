@@ -1,4 +1,4 @@
-// [AIV_SHORT]  Version: 0.0.1 - Thursday, August 15th, 2019, 2:02:55 PM  
+// [AIV_SHORT]  Version: 0.0.1 - Tuesday, August 27th, 2019, 2:29:22 PM  
  /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -82,7 +82,7 @@
 /******/
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 71);
+/******/ 	return __webpack_require__(__webpack_require__.s = 72);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -31914,7 +31914,7 @@ var editor = renderer.create('<div class="note-editor note-frame card"/>');
 var toolbar = renderer.create('<div class="note-toolbar-wrapper"><div class="note-toolbar card-header"></div></div>');
 var editingArea = renderer.create('<div class="note-editing-area"/>');
 var codable = renderer.create('<textarea class="note-codable"/>');
-var editable = renderer.create('<div class="note-editable card-block" contentEditable="true"/>');
+var editable = renderer.create('<div class="note-editable card-block" aria-label="Add annotation text" contentEditable="true"/>');
 var statusbar = renderer.create([
     '<div class="note-statusbar">',
     '  <div class="note-resizebar">',
@@ -32047,7 +32047,9 @@ var ui = {
         return renderer.create('<button type="button" class="note-btn btn btn-light btn-sm" tabindex="-1">', function ($node, options) {
             if (options && options.tooltip) {
                 $node.attr({
-                    title: options.tooltip
+                    title: options.tooltip,
+                    "aria-label": options.tooltip,
+                    role: "button"
                 }).tooltip({
                     container: options.container,
                     trigger: 'hover',
@@ -39388,6 +39390,8 @@ __webpack_require__(57);
 
 __webpack_require__(58);
 
+__webpack_require__(60);
+
 (function ($) {
   /**
    * { function_description }
@@ -39729,6 +39733,7 @@ __webpack_require__(58);
 
   $.TextTarget.prototype.TargetAnnotationDraw = function (annotation) {
     var self = this;
+    console.log('me', annotation);
     jQuery.each(self.drawers, function (_, drawer) {
       drawer.draw(annotation);
     });
@@ -40760,6 +40765,7 @@ var hrange = __webpack_require__(3);
   $.XPathDrawer.prototype.getSpecificAnnotationData = function (annotation_id) {
     var self = this;
     var currentAnnotations = self.getAnnotationsData();
+    console.log(currentAnnotations);
     var foundAnnotation = currentAnnotations.find(function (ann) {
       if (ann.id === annotation_id) {
         return ann;
@@ -44000,6 +44006,126 @@ __webpack_require__(59);
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(jQuery) {/**
+ *  Websockets Annotations Plugin
+ *  
+ *
+ */
+//uncomment to add css file
+//require('./filaname.css');
+(function ($) {
+  /**
+   * @constructor
+   * @params {Object} options - specific options for this plugin
+   */
+  $.Websockets = function (options, instanceID) {
+    this.options = jQuery.extend({}, options);
+    this.instanceID = instanceID;
+    this.init();
+    return this;
+  };
+  /**
+   * Initializes instance
+   */
+
+
+  $.Websockets.prototype.init = function () {
+    var self = this;
+    var collection_id = self.options.collection_id;
+    var wsUrl = self.options.Websockets.wsUrl;
+    var chatSocket = new WebSocket('wss://' + wsUrl + '/ws/chat/' + collection_id + '/');
+
+    chatSocket.onmessage = function (e) {
+      var data = JSON.parse(e.data);
+      var message = data['message'];
+      var annotation = eval("(" + message + ")");
+      var wa = self.convertingFromAnnotatorJS(annotation);
+
+      if (data['type'] === 'annotation_deleted') {
+        $.publishEvent('GetSpecificAnnotationData', self.instance_id, [wa.id, function (annotationFound) {
+          $.publishEvent('TargetAnnotationUndraw', self.instance_id, [annotationFound]);
+          jQuery('.item-' + annotation.id).remove();
+        }]);
+      } else {
+        $.publishEvent('annotationLoaded', self.instance_id, [wa]);
+
+        if (data['type'] === 'annotation_updated') {
+          $.publishEvent('GetSpecificAnnotationData', self.instance_id, [wa.id, function (annotationFound) {
+            $.publishEvent('TargetAnnotationUndraw', self.instance_id, [annotationFound]);
+            $.publishEvent('TargetAnnotationDraw', self.instance_id, [wa]);
+          }]);
+        } else {
+          $.publishEvent('TargetAnnotationDraw', self.instance_id, [wa]);
+        }
+      }
+    };
+
+    chatSocket.onclose = function (e) {
+      console.error('Chat socket closed unexpectedly');
+    };
+  };
+
+  $.Websockets.prototype.extractHostname = function (url1) {
+    var hostname; //find & remove protocol (http, ftp, etc.) and get hostname
+
+    if (url1.indexOf("//") > -1) {
+      hostname = url1.split('/')[2];
+    } else {
+      hostname = url1.split('/')[0];
+    } //find & remove port number
+
+
+    hostname = hostname.split(':')[0]; //find & remove "?"
+
+    hostname = hostname.split('?')[0];
+    return hostname;
+  };
+
+  $.Websockets.prototype.saving = function (annotation) {
+    return annotation;
+  };
+
+  Object.defineProperty($.Websockets, 'name', {
+    value: "Websockets"
+  });
+
+  $.Websockets.prototype.convertingFromAnnotatorJS = function (annotation) {
+    var self = this;
+    var ranges = annotation.ranges;
+    var rangeList = [];
+    ranges.forEach(function (range) {
+      rangeList.push({
+        'xpath': range,
+        'text': {
+          prefix: '',
+          exact: annotation.quote,
+          suffix: ''
+        }
+      });
+    });
+    var annotation = {
+      annotationText: [annotation.text],
+      created: annotation.created,
+      creator: annotation.user,
+      exact: annotation.quote,
+      id: annotation.id,
+      media: annotation.media,
+      tags: annotation.tags,
+      ranges: rangeList,
+      totalReplies: annotation.totalComments,
+      permissions: annotation.permissions
+    };
+    return annotation;
+  };
+
+  $.plugins.push($.Websockets);
+})(Hxighlighter ? Hxighlighter : __webpack_require__(1));
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(0)))
+
+/***/ }),
+/* 61 */
+/***/ (function(module, exports, __webpack_require__) {
+
+/* WEBPACK VAR INJECTION */(function(jQuery) {/**
  * 
  */
 (function ($) {
@@ -44068,6 +44194,11 @@ __webpack_require__(59);
     self.callFuncInList(this.targets, 'TargetAnnotationDraw', message);
   };
 
+  $.Core.prototype.TargetAnnotationUndraw = function (message) {
+    var self = this;
+    self.callFuncInList(this.targets, 'TargetAnnotationUndraw', message);
+  };
+
   $.Core.prototype.ViewerEditorOpen = function (message) {
     var self = this;
     self.callFuncInList(this.targets, 'ViewerEditorOpen', message);
@@ -44132,7 +44263,6 @@ __webpack_require__(59);
 /* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(0)))
 
 /***/ }),
-/* 61 */,
 /* 62 */,
 /* 63 */,
 /* 64 */,
@@ -44142,14 +44272,15 @@ __webpack_require__(59);
 /* 68 */,
 /* 69 */,
 /* 70 */,
-/* 71 */
+/* 71 */,
+/* 72 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__(72);
+module.exports = __webpack_require__(73);
 
 
 /***/ }),
-/* 72 */
+/* 73 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -44178,9 +44309,7 @@ __webpack_require__(21);
 
 __webpack_require__(23);
 
-__webpack_require__(60);
-
-__webpack_require__(73);
+__webpack_require__(61);
 
 __webpack_require__(74);
 
@@ -44188,8 +44317,10 @@ __webpack_require__(75);
 
 __webpack_require__(76);
 
+__webpack_require__(77);
+
 /***/ }),
-/* 73 */
+/* 74 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(jQuery) {var hrange = __webpack_require__(3);
@@ -44758,7 +44889,7 @@ __webpack_require__(76);
 /* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(0)))
 
 /***/ }),
-/* 74 */
+/* 75 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(jQuery) {/**
@@ -44829,7 +44960,7 @@ __webpack_require__(76);
 /* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(0)))
 
 /***/ }),
-/* 75 */
+/* 76 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(jQuery) {(function ($) {
@@ -44924,7 +45055,7 @@ window.hxighlighter_launcher = new Hxighlighter.Launcher();
 /* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(0)))
 
 /***/ }),
-/* 76 */
+/* 77 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // extracted by mini-css-extract-plugin
