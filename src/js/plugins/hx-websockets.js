@@ -17,6 +17,8 @@
         this.options = jQuery.extend({}, options);
         this.instanceID = instanceID;
         this.init();
+        this.timerRetryInterval;
+        this.socket = null;
         return this;
     };
 
@@ -25,25 +27,44 @@
      */
     $.Websockets.prototype.init = function() {
         var self = this;
-        var collection_id = self.options.collection_id;
-        var wsUrl = self.options.Websockets.wsUrl;
-        var chatSocket = new WebSocket(
-            'wss://' + wsUrl +
-            '/ws/chat/' + collection_id + '/');
+        self.slot_id = self.options.context_id.replace(/[^a-zA-Z0-9-.]/g, '-') + '--' + self.options.collection_id + '--' + self.options.object_id;
+        self.setUpConnection();
+    };
 
-        chatSocket.onmessage = function(e) {
+    $.Websockets.prototype.saving = function(annotation) {
+        return annotation;
+    };
+
+    $.Websockets.prototype.setUpConnection = function() {
+        var self = this;
+        self.socket = self.openWs(self.slot_id, self.options.Websockets.wsUrl);
+        self.socket.onopen = function(e) {
+            self.onWsOpen(e);
+        };
+        self.socket.onmessage = function(e) {
             var data = JSON.parse(e.data);
-            var message = data['message'];
+            self.receiveWsMessage(data);
+        };
+        self.socket.onclose = function(e) {
+            self.onWsClose(e);
+        };
+    };
+
+    $.Websockets.prototype.receiveWsMessage = function(response) {
+        var self = this;
+        var message = response['message'];
             var annotation = eval( "(" + message + ")");
-            var wa = self.convertingFromAnnotatorJS(annotation);
-            if (data['type'] === 'annotation_deleted') {
+            if (typeof(annotation.id) == "number") {
+                var wa = self.convertingFromAnnotatorJS(annotation);
+            }
+            if (response['type'] === 'annotation_deleted') {
                 $.publishEvent('GetSpecificAnnotationData', self.instance_id, [wa.id, function(annotationFound) {
                     $.publishEvent('TargetAnnotationUndraw', self.instance_id, [annotationFound]);
                     jQuery('.item-' + annotation.id).remove();
                 }]);
             } else {
                 $.publishEvent('annotationLoaded', self.instance_id, [wa]);
-                if (data['type'] === 'annotation_updated') {
+                if (response['type'] === 'annotation_updated') {
                     $.publishEvent('GetSpecificAnnotationData', self.instance_id, [wa.id, function(annotationFound) {
                         $.publishEvent('TargetAnnotationUndraw', self.instance_id, [annotationFound]);
                         $.publishEvent('TargetAnnotationDraw', self.instance_id, [wa]);
@@ -52,34 +73,32 @@
                     $.publishEvent('TargetAnnotationDraw', self.instance_id, [wa]);
                 }
             }
-        };
-
-        chatSocket.onclose = function(e) {
-            console.error('Chat socket closed unexpectedly');
-        };
     };
 
-    $.Websockets.prototype.extractHostname = function(url1) {
-        var hostname;
-        //find & remove protocol (http, ftp, etc.) and get hostname
+    $.Websockets.prototype.openWs = function(slot_id, wsUrl) {
+        var chatSocket = new WebSocket(
+            'wss://' + wsUrl +
+            '/ws/chat/' + slot_id + '/');
 
-        if (url1.indexOf("//") > -1) {
-            hostname = url1.split('/')[2];
+        return chatSocket;
+    };
+
+    $.Websockets.prototype.onWsOpen = function() {
+        var self = this;
+        if (self.timerRetryInterval) {
+            clearInterval(self.timerRetryInterval);
+            self.timerRetryInterval = undefined;
         }
-        else {
-            hostname = url1.split('/')[0];
+    };
+
+    $.Websockets.prototype.onWsClose = function() {
+        var self = this;
+        if (!self.timerRetryInterval) {
+            self.timerRetryInterval = setInterval(function() {
+                console.log('intervalrunning');
+                self.setUpConnection();
+            }, 5000)
         }
-
-        //find & remove port number
-        hostname = hostname.split(':')[0];
-        //find & remove "?"
-        hostname = hostname.split('?')[0];
-
-        return hostname;
-    }
-
-    $.Websockets.prototype.saving = function(annotation) {
-        return annotation;
     };
 
     Object.defineProperty($.Websockets, 'name', {

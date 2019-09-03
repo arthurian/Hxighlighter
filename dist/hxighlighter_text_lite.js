@@ -1,4 +1,4 @@
-// [AIV_SHORT]  Version: 0.0.1 - Tuesday, August 27th, 2019, 2:29:22 PM  
+// [AIV_SHORT]  Version: 0.0.1 - Tuesday, August 27th, 2019, 6:00:09 PM  
  /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -44021,6 +44021,8 @@ __webpack_require__(59);
     this.options = jQuery.extend({}, options);
     this.instanceID = instanceID;
     this.init();
+    this.timerRetryInterval;
+    this.socket = null;
     return this;
   };
   /**
@@ -44030,58 +44032,83 @@ __webpack_require__(59);
 
   $.Websockets.prototype.init = function () {
     var self = this;
-    var collection_id = self.options.collection_id;
-    var wsUrl = self.options.Websockets.wsUrl;
-    var chatSocket = new WebSocket('wss://' + wsUrl + '/ws/chat/' + collection_id + '/');
-
-    chatSocket.onmessage = function (e) {
-      var data = JSON.parse(e.data);
-      var message = data['message'];
-      var annotation = eval("(" + message + ")");
-      var wa = self.convertingFromAnnotatorJS(annotation);
-
-      if (data['type'] === 'annotation_deleted') {
-        $.publishEvent('GetSpecificAnnotationData', self.instance_id, [wa.id, function (annotationFound) {
-          $.publishEvent('TargetAnnotationUndraw', self.instance_id, [annotationFound]);
-          jQuery('.item-' + annotation.id).remove();
-        }]);
-      } else {
-        $.publishEvent('annotationLoaded', self.instance_id, [wa]);
-
-        if (data['type'] === 'annotation_updated') {
-          $.publishEvent('GetSpecificAnnotationData', self.instance_id, [wa.id, function (annotationFound) {
-            $.publishEvent('TargetAnnotationUndraw', self.instance_id, [annotationFound]);
-            $.publishEvent('TargetAnnotationDraw', self.instance_id, [wa]);
-          }]);
-        } else {
-          $.publishEvent('TargetAnnotationDraw', self.instance_id, [wa]);
-        }
-      }
-    };
-
-    chatSocket.onclose = function (e) {
-      console.error('Chat socket closed unexpectedly');
-    };
-  };
-
-  $.Websockets.prototype.extractHostname = function (url1) {
-    var hostname; //find & remove protocol (http, ftp, etc.) and get hostname
-
-    if (url1.indexOf("//") > -1) {
-      hostname = url1.split('/')[2];
-    } else {
-      hostname = url1.split('/')[0];
-    } //find & remove port number
-
-
-    hostname = hostname.split(':')[0]; //find & remove "?"
-
-    hostname = hostname.split('?')[0];
-    return hostname;
+    self.slot_id = self.options.context_id.replace(/[^a-zA-Z0-9-.]/g, '-') + '--' + self.options.collection_id + '--' + self.options.object_id;
+    self.setUpConnection();
   };
 
   $.Websockets.prototype.saving = function (annotation) {
     return annotation;
+  };
+
+  $.Websockets.prototype.setUpConnection = function () {
+    var self = this;
+    self.socket = self.openWs(self.slot_id, self.options.Websockets.wsUrl);
+
+    self.socket.onopen = function (e) {
+      self.onWsOpen(e);
+    };
+
+    self.socket.onmessage = function (e) {
+      var data = JSON.parse(e.data);
+      self.receiveWsMessage(data);
+    };
+
+    self.socket.onclose = function (e) {
+      self.onWsClose(e);
+    };
+  };
+
+  $.Websockets.prototype.receiveWsMessage = function (response) {
+    var self = this;
+    var message = response['message'];
+    var annotation = eval("(" + message + ")");
+
+    if (typeof annotation.id == "number") {
+      var wa = self.convertingFromAnnotatorJS(annotation);
+    }
+
+    if (response['type'] === 'annotation_deleted') {
+      $.publishEvent('GetSpecificAnnotationData', self.instance_id, [wa.id, function (annotationFound) {
+        $.publishEvent('TargetAnnotationUndraw', self.instance_id, [annotationFound]);
+        jQuery('.item-' + annotation.id).remove();
+      }]);
+    } else {
+      $.publishEvent('annotationLoaded', self.instance_id, [wa]);
+
+      if (response['type'] === 'annotation_updated') {
+        $.publishEvent('GetSpecificAnnotationData', self.instance_id, [wa.id, function (annotationFound) {
+          $.publishEvent('TargetAnnotationUndraw', self.instance_id, [annotationFound]);
+          $.publishEvent('TargetAnnotationDraw', self.instance_id, [wa]);
+        }]);
+      } else {
+        $.publishEvent('TargetAnnotationDraw', self.instance_id, [wa]);
+      }
+    }
+  };
+
+  $.Websockets.prototype.openWs = function (slot_id, wsUrl) {
+    var chatSocket = new WebSocket('wss://' + wsUrl + '/ws/chat/' + slot_id + '/');
+    return chatSocket;
+  };
+
+  $.Websockets.prototype.onWsOpen = function () {
+    var self = this;
+
+    if (self.timerRetryInterval) {
+      clearInterval(self.timerRetryInterval);
+      self.timerRetryInterval = undefined;
+    }
+  };
+
+  $.Websockets.prototype.onWsClose = function () {
+    var self = this;
+
+    if (!self.timerRetryInterval) {
+      self.timerRetryInterval = setInterval(function () {
+        console.log('intervalrunning');
+        self.setUpConnection();
+      }, 5000);
+    }
   };
 
   Object.defineProperty($.Websockets, 'name', {
