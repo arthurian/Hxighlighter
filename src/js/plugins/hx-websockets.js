@@ -148,6 +148,5 @@
         callBack(annotation)
     };
 
-
     $.plugins.push($.Websockets);
 }(Hxighlighter ?  Hxighlighter : require('../hxighlighter.js')));
