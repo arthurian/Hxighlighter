@@ -54,25 +54,24 @@
         var self = this;
         var message = response['message'];
             var annotation = eval( "(" + message + ")");
-            if (typeof(annotation.id) == "number") {
-                var wa = self.convertingFromAnnotatorJS(annotation);
-            }
-            if (response['type'] === 'annotation_deleted') {
-                $.publishEvent('GetSpecificAnnotationData', self.instance_id, [wa.id, function(annotationFound) {
-                    $.publishEvent('TargetAnnotationUndraw', self.instance_id, [annotationFound]);
-                    jQuery('.item-' + annotation.id).remove();
-                }]);
-            } else {
-                $.publishEvent('annotationLoaded', self.instance_id, [wa]);
-                if (response['type'] === 'annotation_updated') {
-                    $.publishEvent('GetSpecificAnnotationData', self.instance_id, [wa.id, function(annotationFound) {
-                        $.publishEvent('TargetAnnotationUndraw', self.instance_id, [annotationFound]);
-                        $.publishEvent('TargetAnnotationDraw', self.instance_id, [wa]);
+            self.convertAnnotation(annotation, function(wa) {
+                if (response['type'] === 'annotation_deleted') {
+                    $.publishEvent('GetSpecificAnnotationData', self.instanceID, [wa.id, function(annotationFound) {
+                        $.publishEvent('TargetAnnotationUndraw', self.instanceID, [annotationFound]);
+                        jQuery('.item-' + wa.id).remove();
                     }]);
                 } else {
-                    $.publishEvent('TargetAnnotationDraw', self.instance_id, [wa]);
+                    $.publishEvent('wsAnnotationLoaded', self.instanceID, [wa]);
+                    if (response['type'] === 'annotation_updated') {
+                        $.publishEvent('GetSpecificAnnotationData', self.instanceID, [wa.id, function(annotationFound) {
+                            $.publishEvent('TargetAnnotationUndraw', self.instanceID, [annotationFound]);
+                            $.publishEvent('TargetAnnotationDraw', self.instanceID, [wa]);
+                        }]);
+                    } else {
+                        $.publishEvent('TargetAnnotationDraw', self.instanceID, [wa]);
+                    }
                 }
-            }
+            });
     };
 
     $.Websockets.prototype.openWs = function(slot_id, wsUrl) {
@@ -105,7 +104,21 @@
         value: "Websockets"
     });
 
-    $.Websockets.prototype.convertingFromAnnotatorJS = function(annotation) {
+    $.Websockets.prototype.convertAnnotation = function(annotation, callBack) {
+        var self = this;
+        if (annotation && annotation.schema_version) {
+            return self.convertingFromWebAnnotations(annotation, callBack);
+        } else {
+            return self.convertingFromAnnotatorJS(annotation, callBack);
+        }
+    };
+
+    $.Websockets.prototype.convertingFromWebAnnotations = function(annotation, callBack) {
+        var self = this;
+        $.publishEvent('convertFromWebAnnotation', self.instanceID, [self.options.slot, annotation, callBack]);
+    };
+
+    $.Websockets.prototype.convertingFromAnnotatorJS = function(annotation, callBack) {
         var self = this;
         var ranges = annotation.ranges;
         var rangeList = [];
@@ -132,8 +145,8 @@
             permissions: annotation.permissions
 
         }
-        return annotation
-    }
+        callBack(annotation)
+    };
 
 
     $.plugins.push($.Websockets);

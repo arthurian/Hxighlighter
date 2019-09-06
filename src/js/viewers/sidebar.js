@@ -375,6 +375,10 @@ require('jquery-tokeninput/build/jquery.tokeninput.min.js');
             self.search(options);
         });
 
+        $.subscribeEvent('wsAnnotationLoaded', self.instance_id, function(_, annotation) {
+            self.addAnnotation(annotation, false, false);
+        });
+
         $.subscribeEvent('annotationLoaded', self.instance_id, function(_, annotation) {
             self.addAnnotation(annotation, false, true);
         });

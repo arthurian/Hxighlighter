@@ -7,7 +7,15 @@ var hrange = require('../h-range.js');
         this.instance_id = inst_id;
         this.store = [];
         this.url_base = options.storageOptions.external_url.catchpy;
+        this.setUpListeners();
         //console.log(this.url_base);
+    };
+
+    $.CatchPy.prototype.setUpListeners = function() {
+        var self = this;
+        $.subscribeEvent('convertFromWebAnnotation', self.instance_id, function(_, element, webAnnotation, callBack) {
+            callBack(self.convertFromWebAnnotation(webAnnotation, jQuery(element).find('.annotator-wrapper')));
+        });
     };
 
 
