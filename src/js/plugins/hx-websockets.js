@@ -27,7 +27,7 @@
      */
     $.Websockets.prototype.init = function() {
         var self = this;
-        self.slot_id = self.options.context_id.replace(/[^a-zA-Z0-9-.]/g, '-') + '--' + self.options.collection_id + '--' + self.options.object_id;
+        self.slot_id = self.options.context_id.replace(/[^a-zA-Z0-9-.]/g, '-') + '--' + self.options.collection_id;
         self.setUpConnection();
     };
 
