@@ -11,12 +11,17 @@
 .hx-notify {
     position: fixed;
     top: 0;
-    left: 0;
-    width: 100%;
+    left: 10%;
+    width: 80%;
     min-height: 0px;
     z-index: 999999999999999;
     background: var(--accent-color);
+    padding-top: 15px;
     color: white;
+    border: 2px solid #EDEDED;
+    border-top: 0px solid #EDEDED;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
     text-align: center;
     overflow-y: hidden;
     max-height: 0px; /* approximate max height */

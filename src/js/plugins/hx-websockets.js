@@ -27,7 +27,7 @@
      */
     $.Websockets.prototype.init = function() {
         var self = this;
-        self.slot_id = self.options.context_id.replace(/[^a-zA-Z0-9-.]/g, '-') + '--' + self.options.collection_id;
+        self.slot_id = self.options.context_id.replace(/[^a-zA-Z0-9-.]/g, '-') + '--' + self.options.collection_id + '--' + self.options.object_id;
         self.setUpConnection();
     };
 
@@ -53,25 +53,31 @@
     $.Websockets.prototype.receiveWsMessage = function(response) {
         var self = this;
         var message = response['message'];
-            var annotation = eval( "(" + message + ")");
-            self.convertAnnotation(annotation, function(wa) {
-                if (response['type'] === 'annotation_deleted') {
-                    $.publishEvent('GetSpecificAnnotationData', self.instanceID, [wa.id, function(annotationFound) {
+        var annotation = eval( "(" + message + ")");
+        self.convertAnnotation(annotation, function(wa) {
+            if (response['type'] === 'annotation_deleted') {
+                $.publishEvent('GetSpecificAnnotationData', self.instanceID, [wa.id, function(annotationFound) {
+                    if (wa.media !== "Annotation") {
                         $.publishEvent('TargetAnnotationUndraw', self.instanceID, [annotationFound]);
                         jQuery('.item-' + wa.id).remove();
+                    } else {
+                        console.log('Removing Reply', wa);
+                        $.publishEvent('removeReply', self.instanceID, [wa]);
+                        jQuery('.reply-item-' + wa.id).remove();
+                    }
+                }]);
+            } else {
+                $.publishEvent('wsAnnotationLoaded', self.instanceID, [wa]);
+                if (response['type'] === 'annotation_updated') {
+                    $.publishEvent('GetSpecificAnnotationData', self.instanceID, [wa.id, function(annotationFound) {
+                        $.publishEvent('TargetAnnotationUndraw', self.instanceID, [annotationFound]);
+                        $.publishEvent('TargetAnnotationDraw', self.instanceID, [wa]);
                     }]);
                 } else {
-                    $.publishEvent('wsAnnotationLoaded', self.instanceID, [wa]);
-                    if (response['type'] === 'annotation_updated') {
-                        $.publishEvent('GetSpecificAnnotationData', self.instanceID, [wa.id, function(annotationFound) {
-                            $.publishEvent('TargetAnnotationUndraw', self.instanceID, [annotationFound]);
-                            $.publishEvent('TargetAnnotationDraw', self.instanceID, [wa]);
-                        }]);
-                    } else {
-                        $.publishEvent('TargetAnnotationDraw', self.instanceID, [wa]);
-                    }
+                    $.publishEvent('TargetAnnotationDraw', self.instanceID, [wa]);
                 }
-            });
+            }
+        });
     };
 
     $.Websockets.prototype.openWs = function(slot_id, wsUrl) {

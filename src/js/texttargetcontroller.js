@@ -360,20 +360,22 @@ require('./plugins/hx-websockets.js');
      */
     $.TextTarget.prototype.TargetAnnotationDraw = function(annotation) {
         var self = this;
-        console.log('me', annotation);
-        jQuery.each(self.drawers, function(_, drawer) {
-            drawer.draw(annotation);
-        });
-        jQuery.each(self.viewers, function(_, viewer) {
-            if ($.exists(viewer.TargetAnnotationDraw)) {
-                viewer.TargetAnnotationDraw(annotation);
-            }
-        });
-        jQuery.each(self.plugins, function(_, plugin) {
-            if ($.exists(plugin.TargetAnnotationDraw)) {
-                plugin.TargetAnnotationDraw(annotation);
-            }
-        });
+        console.log(Object.keys(annotation.ranges[0]).indexOf('parent') == -1);
+        if (Object.keys(annotation.ranges[0]).indexOf('parent') == -1) {
+            jQuery.each(self.drawers, function(_, drawer) {
+                drawer.draw(annotation);
+            });
+            jQuery.each(self.viewers, function(_, viewer) {
+                if ($.exists(viewer.TargetAnnotationDraw)) {
+                    viewer.TargetAnnotationDraw(annotation);
+                }
+            });
+            jQuery.each(self.plugins, function(_, plugin) {
+                if ($.exists(plugin.TargetAnnotationDraw)) {
+                    plugin.TargetAnnotationDraw(annotation);
+                }
+            });
+        }
     };
 
     /**
@@ -383,9 +385,11 @@ require('./plugins/hx-websockets.js');
      */
     $.TextTarget.prototype.TargetAnnotationUndraw = function(annotation) {
         var self = this;
-        jQuery.each(self.drawers, function(_, drawer) {
-            drawer.undraw(annotation);
-        });
+        if (annotation.media !== "Annotation") {
+            jQuery.each(self.drawers, function(_, drawer) {
+                drawer.undraw(annotation);
+            });
+        }
     };
 
     /**

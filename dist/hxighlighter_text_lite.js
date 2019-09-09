@@ -1,4 +1,4 @@
-// [AIV_SHORT]  Version: 0.0.1 - Friday, September 6th, 2019, 1:52:58 PM  
+// [AIV_SHORT]  Version: 0.0.1 - Monday, September 9th, 2019, 2:16:18 PM  
  /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -32448,20 +32448,23 @@ __webpack_require__(58);
 
   $.TextTarget.prototype.TargetAnnotationDraw = function (annotation) {
     var self = this;
-    console.log('me', annotation);
-    jQuery.each(self.drawers, function (_, drawer) {
-      drawer.draw(annotation);
-    });
-    jQuery.each(self.viewers, function (_, viewer) {
-      if ($.exists(viewer.TargetAnnotationDraw)) {
-        viewer.TargetAnnotationDraw(annotation);
-      }
-    });
-    jQuery.each(self.plugins, function (_, plugin) {
-      if ($.exists(plugin.TargetAnnotationDraw)) {
-        plugin.TargetAnnotationDraw(annotation);
-      }
-    });
+    console.log(Object.keys(annotation.ranges[0]).indexOf('parent') == -1);
+
+    if (Object.keys(annotation.ranges[0]).indexOf('parent') == -1) {
+      jQuery.each(self.drawers, function (_, drawer) {
+        drawer.draw(annotation);
+      });
+      jQuery.each(self.viewers, function (_, viewer) {
+        if ($.exists(viewer.TargetAnnotationDraw)) {
+          viewer.TargetAnnotationDraw(annotation);
+        }
+      });
+      jQuery.each(self.plugins, function (_, plugin) {
+        if ($.exists(plugin.TargetAnnotationDraw)) {
+          plugin.TargetAnnotationDraw(annotation);
+        }
+      });
+    }
   };
   /**
    * { function_description }
@@ -32472,9 +32475,12 @@ __webpack_require__(58);
 
   $.TextTarget.prototype.TargetAnnotationUndraw = function (annotation) {
     var self = this;
-    jQuery.each(self.drawers, function (_, drawer) {
-      drawer.undraw(annotation);
-    });
+
+    if (annotation.media !== "Annotation") {
+      jQuery.each(self.drawers, function (_, drawer) {
+        drawer.undraw(annotation);
+      });
+    }
   };
   /**
    * { function_description }
@@ -32850,7 +32856,7 @@ var hrange = __webpack_require__(3);
     var existing_drawn_annotation = self.getSpecificAnnotationData(annotation.id);
 
     if (existing_drawn_annotation) {
-      self.udnraw(existing_drawn_annotation);
+      self.undraw(existing_drawn_annotation);
     }
 
     console.log("Annotation Being Drawn", annotation);
@@ -33390,7 +33396,7 @@ __webpack_require__(9);
   $.Sidebar.prototype.addAnnotation = function (annotation, updating, shouldAppend) {
     var self = this;
 
-    if (annotation.media !== "comment" && annotation.text !== "" && $.exists(annotation.tags)) {
+    if (annotation.media !== "comment" && annotation.media !== "Annotation" && annotation.text !== "" && $.exists(annotation.tags)) {
       var ann = annotation;
       ann.index = jQuery('.ann-item').length;
       ann.instructor_ids = self.options.instructors;
@@ -33475,6 +33481,20 @@ __webpack_require__(9);
       });
       $.publishEvent('displayShown', self.instance_id, [jQuery('.item-' + ann.id), ann]);
       jQuery('#empty-alert').css('display', 'none');
+    } else {
+      var parent_id = annotation.ranges[0].parent;
+      var parent = $.publishEvent('GetSpecificAnnotationData', self.instance_id, [parent_id, function (annotation_data) {
+        annotation_data.totalReplies++;
+
+        annotation_data._local.highlights.forEach(function (high) {
+          jQuery(high).data('annotation', annotation_data);
+        });
+
+        var viewers = jQuery('.item-' + annotation_data.id);
+        jQuery.each(viewers, function (index, viewer) {
+          $.publishEvent('addReplyToViewer', self.instance_id, [viewer, annotation, '', annotation_data]);
+        });
+      }]);
     }
   };
 
@@ -36879,7 +36899,7 @@ __webpack_require__(57);
 
   $.Websockets.prototype.init = function () {
     var self = this;
-    self.slot_id = self.options.context_id.replace(/[^a-zA-Z0-9-.]/g, '-') + '--' + self.options.collection_id;
+    self.slot_id = self.options.context_id.replace(/[^a-zA-Z0-9-.]/g, '-') + '--' + self.options.collection_id + '--' + self.options.object_id;
     self.setUpConnection();
   };
 
@@ -36912,8 +36932,14 @@ __webpack_require__(57);
     self.convertAnnotation(annotation, function (wa) {
       if (response['type'] === 'annotation_deleted') {
         $.publishEvent('GetSpecificAnnotationData', self.instanceID, [wa.id, function (annotationFound) {
-          $.publishEvent('TargetAnnotationUndraw', self.instanceID, [annotationFound]);
-          jQuery('.item-' + wa.id).remove();
+          if (wa.media !== "Annotation") {
+            $.publishEvent('TargetAnnotationUndraw', self.instanceID, [annotationFound]);
+            jQuery('.item-' + wa.id).remove();
+          } else {
+            console.log('Removing Reply', wa);
+            $.publishEvent('removeReply', self.instanceID, [wa]);
+            jQuery('.reply-item-' + wa.id).remove();
+          }
         }]);
       } else {
         $.publishEvent('wsAnnotationLoaded', self.instanceID, [wa]);

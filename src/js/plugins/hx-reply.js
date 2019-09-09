@@ -109,6 +109,25 @@ import 'jquery-confirm/css/jquery-confirm.css'
             console.log('reached here, but nothing to destroy');
             self.destroy();
         });
+
+        $.subscribeEvent('addReplyToViewer', self.instanceID, function(_, viewer, reply, prefix, annotation) {
+            self.addReplyToViewer(viewer, reply, prefix, annotation)
+        });
+
+        $.subscribeEvent('removeReply', self.instanceID, function(_, reply) {
+            console.log(reply);
+            if (reply.media === "Annotation" || reply.media === "comment") {
+                $.publishEvent('GetSpecificAnnotationData', self.instance_id, [reply.ranges[0].parent, function(annotation_data) {
+                    console.log(annotation_data);
+                    console.log(reply)
+                    annotation_data.totalReplies--;
+                    annotation_data._local.highlights.forEach(function(high) {
+                        jQuery(high).data('annotation', annotation_data);
+                    });
+                    jQuery('.reply-area-'+annotation_data.id+' .view-replies').html('View ' + annotation_data.totalReplies + ' Replies');
+                }]);
+            }
+        });
     };
 
     /**
@@ -262,7 +281,7 @@ import 'jquery-confirm/css/jquery-confirm.css'
     $.Reply.prototype.retrieveRepliesForAnnotation = function(annotation, viewer, prefix) {
         var self = this;
         $.publishEvent('StorageAnnotationSearch', self.instanceID, [{
-            'source_id': annotation.id,
+            'target_source': annotation.id,
             'media': 'Annotation'
         }, function(results, converter) {
             jQuery('.loading-obj').remove();
@@ -284,43 +303,48 @@ import 'jquery-confirm/css/jquery-confirm.css'
 
     $.Reply.prototype.addReplyToViewer = function(viewer, reply, prefix, annotation) {
         var self = this;
-        console.log(annotation, self.options);
         var delete_option = '';
         if ((self.options.HxPermissions && self.options.HxPermissions.has_staff_permissions) || (annotation.permissions && annotation.permissions.can_delete && annotation.permissions.can_delete.indexOf(self.options.user_id) > -1)) {
             delete_option = "<button aria-label='delete reply' title='Delete Reply' class='delete-reply' tabindex='0'><span class='fa fa-trash'></span></button>";
         }
-        jQuery(viewer).find('.plugin-area-bottom div[class*=reply-list]').append("<div class='reply reply-item-" + reply.id + "'>"+delete_option+"<strong>" + reply.creator.name + "</strong> ("+jQuery.timeago(reply.created)+"):" + reply.annotationText.join('<br><br>') + "</div>");
-        jQuery('.reply.reply-item-' + reply.id + ' .delete-reply').confirm({
-            'title': 'Delete Reply?',
-            'content': 'Would you like to delete your reply? This is permanent.',
-            'buttons': {
-                confirm: function() {
-                    $.publishEvent('StorageAnnotationDelete', self.instanceID, [reply]);
-                    annotation.replies = annotation.replies.filter(function(ann) {
-                        if (ann.id !== reply.id) {
-                            return ann;
+        var reply_list = jQuery(viewer).find('.plugin-area-bottom div[class*=reply-list]');
+        if (reply_list.is(':visible')) {
+            reply_list.append("<div class='reply reply-item-" + reply.id + "'>"+delete_option+"<strong>" + reply.creator.name + "</strong> ("+jQuery.timeago(reply.created)+"):" + reply.annotationText.join('<br><br>') + "</div>");
+            jQuery('.reply.reply-item-' + reply.id + ' .delete-reply').confirm({
+                'title': 'Delete Reply?',
+                'content': 'Would you like to delete your reply? This is permanent.',
+                'buttons': {
+                    confirm: function() {
+                        $.publishEvent('StorageAnnotationDelete', self.instanceID, [reply]);
+                        annotation.replies = annotation.replies.filter(function(ann) {
+                            if (ann.id !== reply.id) {
+                                return ann;
+                            }
+                        });
+                        annotation.totalReplies--;
+                        annotation._local.highlights.forEach(function(high) {
+                            jQuery(high).data('annotation', annotation);
+                        });
+                        jQuery('.reply.reply-item-' + reply.id).remove();
+                        jQuery('.side.ann-item.item-'+annotation.id+' .view-replies').html('View '+self.pluralize(annotation.totalReplies, 'Reply', 'Replies'));
+                        if (annotation.totalReplies == 0) {
+                            jQuery('.side.ann-item.item-'+annotation.id+' .create-reply').show();
+                            jQuery('.side.ann-item.item-'+annotation.id+' .view-replies').hide();
+                        } else {
+                            jQuery('.side.ann-item.item-'+annotation.id+' .create-reply').hide();
+                            jQuery('.side.ann-item.item-'+annotation.id+' .view-replies').show();
                         }
-                    });
-                    annotation.totalReplies--;
-                    annotation._local.highlights.forEach(function(high) {
-                        jQuery(high).data('annotation', annotation);
-                    });
-                    jQuery('.reply.reply-item-' + reply.id).remove();
-                    jQuery('.side.ann-item.item-'+annotation.id+' .view-replies').html('View '+self.pluralize(annotation.totalReplies, 'Reply', 'Replies'));
-                    if (annotation.totalReplies == 0) {
-                        jQuery('.side.ann-item.item-'+annotation.id+' .create-reply').show();
-                        jQuery('.side.ann-item.item-'+annotation.id+' .view-replies').hide();
-                    } else {
-                        jQuery('.side.ann-item.item-'+annotation.id+' .create-reply').hide();
-                        jQuery('.side.ann-item.item-'+annotation.id+' .view-replies').show();
+                        jQuery('.side.ann-item.item-'+annotation.id).find('.plugin-area-bottom div[class*=reply-list]').hide();
+                        jQuery('.side.ann-item.item-'+annotation.id).find('.plugin-area-bottom .reply-menu').hide();
+                    },
+                    cancel: function() {
                     }
-                    jQuery('.side.ann-item.item-'+annotation.id).find('.plugin-area-bottom div[class*=reply-list]').hide();
-                    jQuery('.side.ann-item.item-'+annotation.id).find('.plugin-area-bottom .reply-menu').hide();
-                },
-                cancel: function() {
-                }
-            } 
-        });
+                } 
+            });
+        } else {
+            console.log("not visible");
+            jQuery('.reply-area-'+annotation.id+' .view-replies').html('View ' + annotation.totalReplies + ' Replies');
+        }
     };
 
     $.Reply.prototype.pluralize = function(num, singular, plural) {

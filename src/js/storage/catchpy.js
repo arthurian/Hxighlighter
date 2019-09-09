@@ -42,6 +42,7 @@ var hrange = require('../h-range.js');
         var data = jQuery.extend({}, {
             limit: self.options.storageOptions.pagination,
             offset: 0,
+            media: 'text',
             source_id: self.options.object_id,
             context_id: self.options.context_id,
             collection_id: self.options.collection_id,
@@ -195,7 +196,7 @@ var hrange = require('../h-range.js');
         var purpose = 'commenting';
         if (annotation.media === "comment") {
             targetList.push(annotation.ranges);
-            source_id = annotation.ranges.source;
+            // source_id = annotation.ranges.source;
             // jQuery.each(annotation.ranges, function(_, range){
             //     targetList.push(range)
             //     source_id = range.parent;
