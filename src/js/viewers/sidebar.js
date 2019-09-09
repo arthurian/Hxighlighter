@@ -470,18 +470,22 @@ require('jquery-tokeninput/build/jquery.tokeninput.min.js');
             $.publishEvent('displayShown', self.instance_id, [jQuery('.item-' + ann.id), ann]);
             jQuery('#empty-alert').css('display', 'none');
         } else {
-            var parent_id = annotation.ranges[0].parent;
-            
-            var parent = $.publishEvent('GetSpecificAnnotationData', self.instance_id, [parent_id, function(annotation_data) {
-                annotation_data.totalReplies++;
-                annotation_data._local.highlights.forEach(function(high) {
-                    jQuery(high).data('annotation', annotation_data);
-                });
-                var viewers = jQuery('.item-' + annotation_data.id);
-                jQuery.each(viewers, function(index, viewer) {
-                    $.publishEvent('addReplyToViewer', self.instance_id, [viewer, annotation, '', annotation_data]);
-                });
-            }])
+            try {
+                var parent_id = annotation.ranges[0].parent;
+                
+                $.publishEvent('GetSpecificAnnotationData', self.instance_id, [parent_id, function(annotation_data) {
+                    annotation_data.totalReplies++;
+                    annotation_data._local.highlights.forEach(function(high) {
+                        jQuery(high).data('annotation', annotation_data);
+                    });
+                    var viewers = jQuery('.item-' + annotation_data.id);
+                    jQuery.each(viewers, function(index, viewer) {
+                        $.publishEvent('addReplyToViewer', self.instance_id, [viewer, annotation, '', annotation_data]);
+                    });
+                }]);
+            } catch(e) {
+
+            }
             
         }
     };
