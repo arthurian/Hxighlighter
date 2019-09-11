@@ -27,6 +27,10 @@ require('./hx-sidebar-tag-tokens.css');
         var self = this;
         // console.log(this);
         var search_button = jQuery('.btn.user-filter#search');
+        if (self.options.tagList.length == 0) {
+            document.documentElement.style.setProperty('--sidebar-search-bar-height-open', (72) + "px")
+            return;
+        }
         search_button.click(function() {
             self.removeTokens();
             setTimeout(function() {

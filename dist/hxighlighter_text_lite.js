@@ -1,4 +1,4 @@
-// [AIV_SHORT]  Version: 0.0.1 - Monday, September 9th, 2019, 2:43:38 PM  
+// [AIV_SHORT]  Version: 0.0.1 - Tuesday, September 10th, 2019, 11:27:58 AM  
  /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -36532,6 +36532,12 @@ __webpack_require__(52);
     var self = this; // console.log(this);
 
     var search_button = jQuery('.btn.user-filter#search');
+
+    if (self.options.tagList.length == 0) {
+      document.documentElement.style.setProperty('--sidebar-search-bar-height-open', 72 + "px");
+      return;
+    }
+
     search_button.click(function () {
       self.removeTokens();
       setTimeout(function () {
