@@ -81,11 +81,11 @@
     };
 
     $.Websockets.prototype.openWs = function(slot_id, wsUrl) {
-        var chatSocket = new WebSocket(
+        var notificationSocket = new WebSocket(
             'wss://' + wsUrl +
-            '/ws/chat/' + slot_id + '/');
+            '/ws/notification/' + slot_id + '/');
 
-        return chatSocket;
+        return notificationSocket;
     };
 
     $.Websockets.prototype.onWsOpen = function() {
