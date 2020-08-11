@@ -348,40 +348,31 @@ function recurseGetNodeFromOffset(root_node, goal_offset) {
 // }
 
 function getNodeFromXpath(root, xpath, offset, ignoreSelector) {
-    var tree = xpath.replace(/\/text\(\)\[(.*)\]/g, '').split('/');
-    tree = tree.filter(function(it) { return it.length > 0 });
-    var traversingDown = root;
-    tree.forEach(function(it) {
-        var selector = it.replace(/\[.*\]/g, '');
-        var counter = parseInt(it.replace(/.*?\[(.*)\]/g, '$1'), 10) - 1;
-
-        var foundNodes = traversingDown.querySelectorAll(selector)
-        foundNodes = [].slice.call(foundNodes).filter(function(node) {
-            return node.className.indexOf(ignoreSelector) == -1;
-        })
-        // //console.log(foundNodes, counter);
-        if (counter == NaN || counter < 0) {
-            counter = 0;
-            traversingDown = foundNodes[counter];
-            while(traversingDown.className.indexOf(ignoreSelector) > -1) {
-                traversingDown = foundNodes[++counter];
-            }
-            //console.log('1', traversingDown, traversingDown.className);
-        } else if(!foundNodes || foundNodes.length === 0){
-            // should account for missing html elements without affecting text
+    let steps = xpath.split("/");
+    if(root !== document) {
+        if(steps[0] == "") {
+            steps[0] = ".";
         } else {
-            traversingDown = foundNodes[counter];
-            while(traversingDown.className.indexOf(ignoreSelector) > -1) {
-                traversingDown = foundNodes[++counter];
-            }
-            //console.log('2', traversingDown, traversingDown.className);
+            steps.unshift(".");
         }
-    });
-    //console.log("TRAVERSINGDOWN", traversingDown, offset);
-    var found = recurseGetNodeFromOffset(traversingDown, offset);
-    ////console.log(found);
-    return found
-};
+    }
+    if(ignoreSelector) {
+        steps = steps.map((step) => {
+            if(step.substr(0, 1) == ".") {
+                return step;
+            }
+            return `${step}[not(contains(@class,"${ignoreSelector}"))]`
+        });
+    }
+
+    xpath = steps.join("/");
+    let result = document.evaluate(xpath, root, null, XPathResult.FIRST_ORDERED_NODE_TYPE);
+    if(!result.singleNodeValue) {
+        return false;
+    }
+
+    return recurseGetNodeFromOffset(result.singleNodeValue, offset);
+}
 
 // https://stackoverflow.com/questions/3410464/how-to-find-indices-of-all-occurrences-of-one-string-in-another-in-javascript
 function getIndicesOf(searchStr, str, caseSensitive) {
